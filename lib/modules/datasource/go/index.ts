@@ -34,6 +34,10 @@ export class GoDatasource extends Datasource {
     // TODO: types (#7154)
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     key: ({ packageName }: Partial<DigestConfig>) => `${packageName}-digest`,
+    cacheable: ({ packageName }: GetReleasesConfig) => {
+      const noproxy = BaseGoDatasource.parseNoproxyfix();
+      return !noproxy?.test(packageName);
+    },
   })
   getReleases(config: GetReleasesConfig): Promise<ReleaseResult | null> {
     return process.env.GOPROXY
@@ -54,6 +58,10 @@ export class GoDatasource extends Datasource {
   @cache({
     namespace: GoDatasource.id,
     key: ({ packageName }: DigestConfig) => `${packageName}-digest`,
+    cacheable: ({ packageName }: GetReleasesConfig) => {
+      const noproxy = BaseGoDatasource.parseNoproxyfix();
+      return !noproxy?.test(packageName);
+    },
   })
   override async getDigest(
     { packageName }: DigestConfig,

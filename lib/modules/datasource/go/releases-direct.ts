@@ -40,6 +40,10 @@ export class GoDirectDatasource extends Datasource {
   @cache({
     namespace: `datasource-${GoDirectDatasource.id}`,
     key: ({ packageName }: GetReleasesConfig) => packageName,
+    cacheable: ({ packageName }: GetReleasesConfig) => {
+      const noproxy = BaseGoDatasource.parseNoproxyfix();
+      return !noproxy?.test(packageName);
+    },
   })
   async getReleases(config: GetReleasesConfig): Promise<ReleaseResult | null> {
     const { packageName } = config;

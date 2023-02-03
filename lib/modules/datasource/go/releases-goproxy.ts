@@ -28,6 +28,10 @@ export class GoProxyDatasource extends Datasource {
   @cache({
     namespace: `datasource-${GoProxyDatasource.id}`,
     key: (config: GetReleasesConfig) => GoProxyDatasource.getCacheKey(config),
+    cacheable: ({ packageName }: GetReleasesConfig) => {
+      const noproxy = GoProxyDatasource.parseNoproxy();
+      return !noproxy?.test(packageName);
+    },
   })
   async getReleases(config: GetReleasesConfig): Promise<ReleaseResult | null> {
     const { packageName } = config;

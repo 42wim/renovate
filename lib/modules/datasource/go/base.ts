@@ -1,6 +1,8 @@
 // TODO: types (#7154)
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 import URL from 'url';
+import is from '@sindresorhus/is';
+import moo from 'moo';
 import { logger } from '../../../logger';
 import { detectPlatform } from '../../../util/common';
 import * as hostRules from '../../../util/host-rules';
@@ -221,5 +223,72 @@ export class BaseGoDatasource {
       datasource: GitTagsDatasource.id,
       packageName: goImportURL,
     };
+  }
+
+  static fixlexer = moo.states({
+    main: {
+      separator: {
+        match: /\s*?,\s*?/, // TODO #12870
+        value: (_: string) => '|',
+      },
+      asterisk: {
+        match: '*',
+        value: (_: string) => '[^\\/]*',
+      },
+      qmark: {
+        match: '?',
+        value: (_: string) => '[^\\/]',
+      },
+      characterRangeOpen: {
+        match: '[',
+        push: 'characterRange',
+        value: (_: string) => '[',
+      },
+      trailingSlash: {
+        match: /\/$/,
+        value: (_: string) => '',
+      },
+      char: {
+        match: /[^*?\\[\n]/,
+        value: (s: string) => s.replace(regEx('\\.', 'g'), '\\.'),
+      },
+      escapedChar: {
+        match: /\\./, // TODO #12870
+        value: (s: string) => s.slice(1),
+      },
+    },
+    characterRange: {
+      char: /[^\\\]\n]/, // TODO #12870
+      escapedChar: {
+        match: /\\./, // TODO #12870
+        value: (s: string) => s.slice(1),
+      },
+      characterRangeEnd: {
+        match: ']',
+        pop: 1,
+      },
+    },
+  });
+
+  static parsedNoproxy: Record<string, RegExp | null> = {};
+
+  static parseNoproxyfix(
+    input: unknown = process.env.GONOPROXY ?? process.env.GOPRIVATE
+  ): RegExp | null {
+    if (!is.string(input)) {
+      return null;
+    }
+    if (this.parsedNoproxy[input] !== undefined) {
+      return this.parsedNoproxy[input];
+    }
+    this.fixlexer.reset(input);
+    const noproxyPattern = [...this.fixlexer]
+      .map(({ value }) => value)
+      .join('');
+    const result = noproxyPattern
+      ? regEx(`^(?:${noproxyPattern})(?:/.*)?$`)
+      : null;
+    this.parsedNoproxy[input] = result;
+    return result;
   }
 }
